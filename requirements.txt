@@ -1,4 +1,9 @@
 fastapi
 uvicorn
 ultralytics
+easyocr
 pillow
+numpy
+torch
+opencv-python-headless
+python-multipart
