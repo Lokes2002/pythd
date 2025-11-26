@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from ultralytics import YOLO
 from PIL import Image
 import io
+import easyocr
 
 app = FastAPI(
     title="YOLO Detection API",
@@ -51,8 +52,8 @@ async def detect(request: Request):
         })
 
     return {"objects": detections}
-    
-import easyocr
+
+
 
 # Load OCR once
 ocr_reader = easyocr.Reader(['en'])
