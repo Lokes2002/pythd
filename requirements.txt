@@ -1,8 +1,4 @@
 fastapi
 uvicorn
-ultralytics
 pillow
-numpy
-opencv-python-headless
-paddleocr
-python-multipart
+pytesseract

@@ -1,71 +1,56 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from ultralytics import YOLO
 from PIL import Image
+import pytesseract
 import io
 
-app = FastAPI(
-    title="YOLO Detection API",
-    description="Upload image bytes to /detect to detect objects using YOLOv8",
-    version="1.0.0"
-)
+app = FastAPI(title="OCR + AI Suggestions API")
 
-# 👉 Ensure yolov8n.pt same folder me ho
-model = YOLO("yolov8n.pt")
+# Prompt-based suggestion system
+def generate_suggestions(text: str):
+    text_lower = text.lower()
+    tips = []
+
+    if len(text.strip()) < 10:
+        tips.append("Add more meaningful content to engage users.")
+    if "follow" in text_lower or "like" in text_lower:
+        tips.append("Avoid asking for likes or follows directly; use value-based CTA.")
+    if len(text.split()) > 150:
+        tips.append("Make the content shorter and more readable.")
+    if "motivation" in text_lower:
+        tips.append("Add a personal story to increase emotional engagement.")
+    if "business" in text_lower or "startup" in text_lower:
+        tips.append("Use a hook line to capture attention early.")
+    if "friend" in text_lower or "selfie" in text_lower:
+        tips.append("Use well-lit images to improve post quality.")
+    if not tips:
+        tips.append("Try adding a strong hook in the first 2 lines for high engagement.")
+    
+    return tips
 
 
 @app.get("/")
 async def home():
-    return {"message": "YOLO Detection API is running. Go to /docs for UI."}
+    return {"status": "running", "info": "upload image to /extract"}
 
 
-@app.post("/detect")
-async def detect(request: Request):
-    # body se raw bytes lo
+@app.post("/extract")
+async def extract(request: Request):
     data = await request.body()
-
     if not data:
-        raise HTTPException(status_code=400, detail="No image data received")
+        raise HTTPException(status_code=400, detail="No image received")
 
-    # bytes → PIL image
     try:
         img = Image.open(io.BytesIO(data))
-    except Exception:
+    except:
         raise HTTPException(status_code=400, detail="Invalid image format")
 
-    # YOLO inference
-    try:
-        results = model(img)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"YOLO inference failed: {e}")
+    # OCR
+    text = pytesseract.image_to_string(img).strip()
 
-    detections = []
+    # Suggestions based on extracted text
+    suggestions = generate_suggestions(text)
 
-    for box in results[0].boxes:
-        cls_id = int(box.cls[0])
-        label = results[0].names[cls_id]
-        confidence = float(box.conf[0])
-        detections.append({
-            "label": label,
-            "confidence": confidence
-        })
-
-    return {"objects": detections}
-
-
-from paddleocr import PaddleOCR
-ocr_reader = PaddleOCR(use_angle_cls=True, lang='en')
-@app.post("/ocr")
-async def ocr(request: Request):
-    data = await request.body()
-    if not data:
-        raise HTTPException(status_code=400, detail="No image data received")
-
-    try:
-        img = Image.open(io.BytesIO(data))
-        result = ocr_reader.ocr(io.BytesIO(data), cls=True)
-        text = " ".join([line[1][0] for line in result[0]])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR failed: {e}")
-
-    return {"text": text}
+    return {
+        "text": text,
+        "suggestions": suggestions
+    }
