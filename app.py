@@ -51,23 +51,17 @@ async def detect(request: Request):
         })
 
     return {"objects": detections}
-
+    
 import easyocr
 
-# OCR Reader load only once for speed
+# Load OCR once
 ocr_reader = easyocr.Reader(['en'])
 
 @app.post("/ocr")
 async def ocr(request: Request):
     data = await request.body()
-    
     if not data:
         raise HTTPException(status_code=400, detail="No image data received")
-
-    try:
-        img = Image.open(io.BytesIO(data))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid image format")
 
     try:
         result = ocr_reader.readtext(io.BytesIO(data), detail=0)
