@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from ultralytics import YOLO
 from PIL import Image
 import io
-import easyocr
 
 app = FastAPI(
     title="YOLO Detection API",
@@ -54,10 +53,8 @@ async def detect(request: Request):
     return {"objects": detections}
 
 
-
-# Load OCR once
-ocr_reader = easyocr.Reader(['en'])
-
+from paddleocr import PaddleOCR
+ocr_reader = PaddleOCR(use_angle_cls=True, lang='en')
 @app.post("/ocr")
 async def ocr(request: Request):
     data = await request.body()
@@ -65,8 +62,10 @@ async def ocr(request: Request):
         raise HTTPException(status_code=400, detail="No image data received")
 
     try:
-        result = ocr_reader.readtext(io.BytesIO(data), detail=0)
+        img = Image.open(io.BytesIO(data))
+        result = ocr_reader.ocr(io.BytesIO(data), cls=True)
+        text = " ".join([line[1][0] for line in result[0]])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR failed: {e}")
 
-    return {"text": " ".join(result)}
+    return {"text": text}
